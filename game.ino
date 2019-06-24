@@ -1,9 +1,12 @@
+#include <Wire.h> // Enable this line if using Arduino Uno, Mega, etc.
+#include <Adafruit_GFX.h>
+#include "Adafruit_LEDBackpack.h"
 #include "Player.cpp"
 const int gameDuration = 30*1000;
 
 const int nrOfMoles = 20;
 const int nrOfPlayers = 2;
-const unsigned long gameLength = 50000;
+const unsigned long gameLength = 35000;
 const unsigned long initialMoleLife = 2000;
 const unsigned long afterGameBuffer = 4000;
 
@@ -42,6 +45,12 @@ int idleAnimationFrames[2][12]={
 
 int buttonState = 0;
 
+Adafruit_7segment p1ScoreDisplay = Adafruit_7segment();
+Adafruit_7segment p2ScoreDisplay = Adafruit_7segment();
+
+int p1LastScore = -1;
+int p2LastScore = -1;
+
 void setup() {
   randomSeed(analogRead(0));
   randomSeed(analogRead(0));
@@ -50,6 +59,8 @@ void setup() {
   randomSeed(analogRead(0));  
   Serial.begin(9600);
 
+  p1ScoreDisplay.begin(0x70);
+  p2ScoreDisplay.begin(0x71);
   
   pinMode(buzzer,OUTPUT);
   for(int i=0; i<nrOfMoles;i++){ //buttons
@@ -64,6 +75,30 @@ void setup() {
  
    p1 = new Player(1, firstButtonPin, firstp1Light, initialMoleLife,  &Serial);
    p2 = new Player(2, firstButtonPin+10, firstp2Light, initialMoleLife, &Serial);
+
+ 
+//   printScore(p2->getPlayerNumber(), 10000); //startup game ----
+//   delay(1000);
+
+  p1ScoreDisplay.print(0xBEEF, HEX);
+  p1ScoreDisplay.writeDisplay();
+//  delay(1000);
+
+
+  p2ScoreDisplay.print(0xBEEF, HEX);
+  p2ScoreDisplay.writeDisplay();
+  delay(1000);
+
+
+//   printScore(p2->getPlayerNumber(), 1338); //startup game ----
+//   delay(1000);
+
+   printScore(p1->getPlayerNumber(), 0); //startup game ----
+   printScore(p2->getPlayerNumber(), 0); //startup game ----
+   delay(1000);
+
+   
+
 
    gameEndTime = 0;
    gameInProgress = false;
@@ -92,7 +127,8 @@ void loop() {
    if(change){
     lightLights(player->getMoles());
    }
-   
+
+   printScore(player->getPlayerNumber(), player->getScore());
  }
 void startGame(){
     warmUpAnimation();
@@ -113,10 +149,29 @@ void decideGameState(){
     if(gameStartTime + gameLength < currentTime ){//game ended
       gameInProgress = false;
       gameEndTime = currentTime;
+
+      int p1FinalScore = p1->getScore();
+      int p2FinalScore = p2->getScore();
+
       p1->reset(firstButtonPin, firstp1Light, initialMoleLife);//TODO refactor
       p2->reset(firstButtonPin, firstp2Light, initialMoleLife);
       lightLights(p1->getMoles());
       lightLights(p2->getMoles());
+
+      delay(1500);
+      if (p1FinalScore > p2FinalScore) {
+          buzz(0);
+      } else if (p2FinalScore > p1FinalScore) {
+        buzz(0);
+        delay(400);
+        buzz(0);
+      } else {
+        buzz(20);
+        delay(400);
+        buzz(20);
+        delay(400);
+        buzz(20);
+      }
     }
   }
 }
@@ -129,6 +184,26 @@ void handleRandomButtonPress(){
       break;
     }   
   }
+}
+
+void printScore(int player, int number){
+
+    Adafruit_7segment targetDisplay;
+    if(player == 1){
+      if(p1LastScore == number){
+        return;  
+      }
+      p1LastScore = number;
+      targetDisplay = p1ScoreDisplay;
+    }else{
+      if(p2LastScore == number){
+        return;  
+      }
+      p2LastScore = number;
+      targetDisplay = p2ScoreDisplay;
+    }
+    targetDisplay.print(number);
+    targetDisplay.writeDisplay();
 }
 
 void lightLights(Mole *litLeds){
@@ -156,7 +231,9 @@ void idleAnimation(){
 
 void warmUpAnimation(){
   int additionalFreq = 0;
-    for(int i=0;i<3;i++){
+    for(int i=0;i<3;i++){// three frames
+      printScore(1, (3-i));
+      printScore(2, (3-i));
        for(int k=0;k<20;k++){
           digitalWrite(k<10 ? k+firstp1Light : k-10+firstp2Light, LOW);
        }

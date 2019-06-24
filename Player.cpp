@@ -7,7 +7,7 @@ class Player{
     const int maximumActiveMoles = 5; 
     const int minimumActiveMoles = 2;
     int playerNr;
-    unsigned int score;
+    int score;
     Mole moles[10];
     int nrOfDeactivatedMoles;
     HardwareSerial * customSerial;
@@ -34,7 +34,7 @@ class Player{
           if (buttonState != moles[index].lastButtonState){
             if(buttonState == 0){//button pressed
                if(moles[index].moleActive){
-                   score+=10;
+                   score = changeScore(+10);
                    int molesToActivate;
                    if((10 - nrOfDeactivatedMoles - 1 ) <= minimumActiveMoles ){
                     molesToActivate = random(1, maximumActiveMoles - (10 - nrOfDeactivatedMoles ) + 2);
@@ -48,9 +48,7 @@ class Player{
                    ++nrOfDeactivatedMoles;
                    lightsModified = true;
                }else{
-                  if(score>0){
-                     score-=5;
-                  }
+                   score = changeScore(-5);
                }
             }
           moles[index].lastButtonState = buttonState;
@@ -69,7 +67,7 @@ class Player{
       lastDeadMolesCheck = currentTime;
       for(int i=0; i< 10; i++){   
         if(moles[i].shouldKill(currentTime,initialMoleLife)){
-           --score;
+           score = changeScore(-2);
            activateRandomMole();
             moles[i].deactivateMole();
            ++nrOfDeactivatedMoles;
@@ -80,7 +78,7 @@ class Player{
     }
 
     void activateRandomMole(){
-      int moleToActivate = random(nrOfDeactivatedMoles);
+      int moleToActivate = random(nrOfDeactivatedMoles+1);
       int reachedIndex = -1;
       for(int i=0; i<10; i++){
         if(!moles[i].moleActive){
@@ -109,6 +107,11 @@ class Player{
         lastDeadMolesCheck = millis();
     }
 
+    int changeScore(int delta){
+      int tempScore = score + delta;
+      return tempScore < 0 ? 0 : tempScore;
+    }
+
     Mole *getMoles(){
       return moles;
     }
@@ -116,6 +119,10 @@ class Player{
     int getPlayerNumber(){
       return  playerNr;
     }
+
+    int getScore(){
+      return score;
+      }
   
 
 };
